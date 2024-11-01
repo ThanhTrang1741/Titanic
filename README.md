@@ -51,29 +51,6 @@ While there was some element of luck involved in surviving, it seems some groups
 
 # **4. Exploratory Data Analysis**
 
-    train_data.info()
-
-<class 'pandas.core.frame.DataFrame'>
-RangeIndex: 891 entries, 0 to 890
-Data columns (total 12 columns):
- #   Column       Non-Null Count  Dtype  
----  ------       --------------  -----  
- 0   PassengerId  891 non-null    int64  
- 1   Survived     891 non-null    int64  
- 2   Pclass       891 non-null    int64  
- 3   Name         891 non-null    object 
- 4   Sex          891 non-null    object 
- 5   Age          714 non-null    float64
- 6   SibSp        891 non-null    int64  
- 7   Parch        891 non-null    int64  
- 8   Ticket       891 non-null    object 
- 9   Fare         891 non-null    float64
- 10  Cabin        204 non-null    object 
- 11  Embarked     889 non-null    object 
-dtypes: float64(2), int64(5), object(5)
-memory usage: 83.7+ KB
-
-
 **Analysis of categorical features**
 
     import matplotlib.pyplot as plt
@@ -109,39 +86,8 @@ memory usage: 83.7+ KB
 * The SibSp and Parch features indicate that passengers who traveled alone had significantly lower survival rates compared to those traveling with family members.
 * A higher Pclass corresponds to a higher percentage of survivors.
 * The survival rate for females is much higher than for males.
-* Passengers boarding from different ports had varying chances of survival --> further investigation
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-
-    sns.countplot(data=train_data,
-              x='Embarked',
-              hue='Pclass',
-              ax=ax1,
-              palette='Blues')
-
-    sns.countplot(data=train_data,
-              x='Embarked',
-              hue='Sex',
-              ax=ax2,
-              palette='Blues')
-
-![image](https://github.com/user-attachments/assets/f71b2793-3def-428f-8741-9b4f477f2463)
-
-There are different combinations of Sex and Pclass for every port of embarcation. E.g. passengers who embarked from the port 'C' were mostly from the 1st Pclass and males here were just a little more than females. Now it looks reasonable why the passengers embarked from this port had higher survivability compared to others.
-
-Explore the patterns of missing data, particularly in **the Age, Cabin, and Embarked** columns
-
-    fig, (ax) = plt.subplots(1, figsize=(20,4))
-
-    sns.histplot(data=train_data,
-             x='Fare',
-             hue='Survived',
-             ax=ax)
-    ax.set_title('Distribution of fare')
-
-![image](https://github.com/user-attachments/assets/361ffab6-6314-4f9d-8fe2-bc78cff3e4f1)
-
-On the histograms above we can see that in general increase in fare leads to increase in number of survivors for every Pclass.
+**Data cleaning**
 
     train_data.isnull().sum()
 
@@ -169,10 +115,12 @@ Number of null values for:
 
 Heat map to examine the correlation between numerical features
 
-    train_data_num_col = train_data.select_dtypes(exclude=['object']).columns
-    train_data_num = train_data[train_data_num_col]
+    num_col = train_data.select_dtypes(exclude=['object']).columns
+    num = train_data[num_col]
     plt.figure(figsize=(10, 5))
-    sns.heatmap(train_data_num.corr(), annot=True, cmap='Blues');
+    sns.heatmap(num.corr(), annot=True, cmap='Blues')
+    plt.title('Titanic Dataset Correlation Matrix')
+    plt.show();
 
 ![image](https://github.com/user-attachments/assets/5ed3178e-c9d8-4001-a50f-7bf6b39c3146)
 
@@ -180,50 +128,17 @@ We observe that Age and Pclass have a moderate positive correlation. We'll use t
 
 **Age**
 
-    plt.figure(figsize=(12, 7))
-    sns.boxplot(x='Pclass', y='Age', hue='Pclass', data=train_data, palette=sns.light_palette("blue", as_cmap=False, n_colors=3), legend=False);
-    plt.show()
-
-![image](https://github.com/user-attachments/assets/61afd94d-72f1-426d-8fe4-d2f839a6ded7) 
-
-as wealthier passengers in higher classes tend to be older, which makes sense.
-
-    # prompt: find median age by pclass
-    median_age_by_pclass = train_data.groupby('Pclass')['Age'].median()
-    print(median_age_by_pclass)
-
-Pclass
-1    37.0
-2    29.0
-3    24.0
-Name: Age, dtype: float64
-
-From the boxplot it is very clear that older people are in Pclass 1 and so on. So to impute age, we can use below code. Also the median of Pclass1 = 37, Pclass2 = 29 and PClass3 = 24.
-
-First we can write an if-else struture to define impute_train_age(), which will return age, whose value will be median of that particular Pclass.
-
-    def impute_train_age(Age, Pclass):
-       if pd.isnull(Age):
-           if Pclass == 1:
-               return 37
-           elif Pclass == 2:
-               return 29
-           else:
-               return 24
-       else:
-           return Age
-
-So next we can replace the null value of Age column using function impute_train_age().
-    train_data['Age'] = train_data.apply(lambda row: impute_train_age(row['Age'], row['Pclass']), axis=1)
-
+    # Fill missing age values based on the median age for each Pclass
+    for pclass in median_age_by_pclass.index:
+    train_data.loc[(train_data['Age'].isnull()) & (train_data['Pclass'] == pclass), 'Age'] = median_age_by_pclass[pclass]
 
 **Cabin & Embarked**
 
-Out of 891 rows, 687 rows have null values in the Cabin column. Additionally, cabins are represented in formats like C85, C123, etc. Therefore, we can drop this column due to the high number of missing values and lack of meaningful information
+Out of 891 rows, 687 rows have null values in the Cabin column -->we can drop this column due to the high number of missing values and lack of meaningful information
 
     train_data.drop('Cabin',axis=1,inplace=True)
 
- Only two rows of Embarked is missing, so we can drop those two rows.
+Only two rows of Embarked is missing, so we can drop those two rows.
 
      train_data.dropna(inplace=True)
      train_data.info()
@@ -250,9 +165,11 @@ memory usage: 83.3+ KB
 
 From train_data.info(), it is clear that we have 4 categorical variables in our dataset. They are ***Name, Sex, Ticket and Embarked***.
 
-Features ***Name and Ticket*** will have no significant meaning for determining target, so we can **drop** those two. Where as ***Sex and Embarked*** features will have **to be encoded** before builiding model.
+***Name and Ticket*** will have no significant meaning for determining target, so we can **drop** those two. 
 
     train_data.drop(['Name','Ticket'],axis=1,inplace=True)
+    
+***Sex and Embarked*** features will have **to be encoded** before builiding model.
 
     # prompt: one-hot encoding
     train_data = pd.get_dummies(train_data, columns = ['Sex'], drop_first=True)
@@ -297,30 +214,10 @@ Accuracy: 0.8127340823970037
 |-------------:|----------:|-------:|----------|---------|
 |       0      |      0.83 | 0.87   | 0.85     | 163     |
 |       1      |      0.78 | 0.72   | 0.75     | 104     |
-|   accuracy   |      0.81 | 267    |          |         |
 |   macro avg  |      0.81 | 0.80   | 0.80     | 267     |
 | weighted avg |      0.81 | 0.81   | 0.81     | 267     |
 
 
-    # Get feature importances from the trained Random Forest model
-    feature_importances = pd.Series(rf_model.feature_importances_, index=X_train.columns)
-
-    # Sort feature importances in descending order
-    feature_importances = feature_importances.sort_values(ascending=False)
-
-    # Print the feature importances
-    print("Feature Importances:\n", feature_importances)
-
-Feature Importances:
- Fare          0.278208
-Age           0.269994
-Sex_male      0.246287
-Pclass        0.083446
-SibSp         0.047131
-Parch         0.042330
-Embarked_S    0.021844
-Embarked_Q    0.010760
-dtype: float64
 
     # prompt: built KNN calsification
 
@@ -345,7 +242,6 @@ Accuracy: 0.6928838951310862
 |:------------:|:---------:|-------:|----------|---------|
 |       0      |      0.75 | 0.75   | 0.75     | 163     |
 |       1      |      0.61 | 0.61   | 0.61     | 104     |
-|   accuracy   |      0.69 | 267    | 0.80     | 267     |
 |   macro avg  |      0.68 | 0.68   | 0.68     | 267     |
 | weighted avg |      0.69 | 0.69   | 0.69     | 267     |
 
@@ -368,32 +264,30 @@ Accuracy: 0.7715355805243446
 |:------------:|:---------:|-------:|----------|---------|
 |       0      |      0.81 | 0.82   | 0.81     | 163     |
 |       1      |      0.71 | 0.69   | 0.70     | 104     |
-|   accuracy   |      0.77 | 267    | 0.76     | 267     |
 |   macro avg  |      0.76 | 0.76   | 0.76     | 267     |
 | weighted avg |      0.77 | 0.77   | 0.77     | 267     |
 
-# prompt: buitl gradient boosting
+    # prompt: buitl gradient boosting
 
-from sklearn.ensemble import GradientBoostingClassifier
+    from sklearn.ensemble import GradientBoostingClassifier
 
-# Assuming X_train, X_test, y_train, y_test are defined as in the original code
+    # Assuming X_train, X_test, y_train, y_test are defined as in the original code
 
-# Build Gradient Boosting Classifier
-gb_model = GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42) # You can adjust hyperparameters
-gb_model.fit(X_train, y_train)
+    # Build Gradient Boosting Classifier
+    gb_model = GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42) # You can adjust hyperparameters
+    gb_model.fit(X_train, y_train)
 
-# Evaluate the model
-y_pred = gb_model.predict(X_test)
-accuracy = accuracy_score(y_test, y_pred)
-print("Accuracy:", accuracy)
-print(classification_report(y_test, y_pred))
+    # Evaluate the model
+    y_pred = gb_model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    print("Accuracy:", accuracy)
+    print(classification_report(y_test, y_pred))
 
 Accuracy: 0.8352059925093633
 |              | precision | recall | f1-score | support |
 |:------------:|:---------:|-------:|----------|---------|
 |       0      |      0.84 | 0.90   | 0.87     | 163     |
 |       1      |      0.83 | 0.73   | 0.78     | 104     |
-|   accuracy   |      0.84 | 267    | 0.76     | 267     |
 |   macro avg  |      0.83 | 0.82   | 0.82     | 267     |
 | weighted avg |      0.83 | 0.84   | 0.83     | 267     |
 
@@ -419,40 +313,13 @@ Accuracy: 0.8277153558052435
 |:------------:|:---------:|-------:|----------|---------|
 |       0      |      0.84 | 0.89   | 0.86     | 163     |
 |       1      |      0.81 | 0.73   | 0.77     | 104     |
-|   accuracy   |      0.83 | 267    | 0.82     | 267     |
 |   macro avg  |      0.82 | 0.81   | 0.82     | 267     |
 | weighted avg |      0.83 | 0.83   | 0.83     | 267     |
 
 
-    # prompt: built naive bayes
 
-    from sklearn.naive_bayes import GaussianNB
-
-    # Assuming X_train, X_test, y_train, y_test are defined as in the original code
-
-    # Build Naive Bayes Classifier
-    nb_model = GaussianNB()
-    nb_model.fit(X_train, y_train)
-
-    # Evaluate the model
-   y_pred = nb_model.predict(X_test)
-   accuracy = accuracy_score(y_test, y_pred)
-   print("Accuracy:", accuracy)
-   print(classification_report(y_test, y_pred))
-
-Accuracy: 0.8052434456928839
-
-|              | precision | recall | f1-score | support |
-|:------------:|:---------:|-------:|----------|---------|
-|       0      |      0.81 | 0.88   | 0.85     | 163     |
-|       1      |      0.79 | 0.68   | 0.73     | 104     |
-|   accuracy   |      0.81 | 267    | 0.82     | 267     |
-|   macro avg  |      0.80 | 0.78   | 0.79     | 267     |
-| weighted avg |      0.80 | 0.81   | 0.80     | 267     |
-
-
-* **"Not Survived" Metrics:** Gradient Boosting performed the best with the highest recall (0.93) and F1-score (0.87), indicating better detection of the not survived class. 
-* **"Survived" Metrics**: Gradient Boosting also has the highest precision (0.88) for the survived class In summary, there is room for improvement in the recall for the "Survived" class across all three models, particularly in the Random Forest model.
+* **"Not Survived" Metrics:** Gradient Boosting performed the best with the highest recall (0.90) and F1-score (0.87), indicating better detection of the not survived class. 
+* **"Survived" Metrics**: Gradient Boosting also has the highest precision (0.83) for the survived class In summary, there is room for improvement in the recall for the "Survived" class across all three models, particularly in the Random Forest model.
 
 
     # prompt: confusion matrix4
@@ -496,60 +363,61 @@ Accuracy: 0.8052434456928839
     # Print model summary (optional, but helpful for analysis)
     print(result.summary())
 
+
+    
 Optimization terminated successfully.
-         Current function value: 0.429874
+         Current function value: 0.446235
          Iterations 6
-Accuracy: 0.7910447761194029
+Accuracy: 0.8352059925093633
               precision    recall  f1-score   support
 
-           0       0.78      0.88      0.83       154
-           1       0.80      0.68      0.73       114
+           0       0.83      0.92      0.87       163
+           1       0.85      0.70      0.77       104
 
-    accuracy                           0.79       268
-   macro avg       0.79      0.78      0.78       268
-weighted avg       0.79      0.79      0.79       268
+    accuracy                           0.84       267
+   macro avg       0.84      0.81      0.82       267
+weighted avg       0.84      0.84      0.83       267
 
                            Logit Regression Results                           
 ==============================================================================
-Dep. Variable:               Survived   No. Observations:                  623
-Model:                          Logit   Df Residuals:                      614
+Dep. Variable:               Survived   No. Observations:                  622
+Model:                          Logit   Df Residuals:                      613
 Method:                           MLE   Df Model:                            8
-Date:                Sat, 26 Oct 2024   Pseudo R-squ.:                  0.3455
-Time:                        08:38:32   Log-Likelihood:                -267.81
-converged:                       True   LL-Null:                       -409.17
-Covariance Type:            nonrobust   LLR p-value:                 1.950e-56
+Date:                Fri, 01 Nov 2024   Pseudo R-squ.:                  0.3277
+Time:                        15:54:21   Log-Likelihood:                -277.56
+converged:                       True   LL-Null:                       -412.87
+Covariance Type:            nonrobust   LLR p-value:                 7.241e-54
 ==============================================================================
                  coef    std err          z      P>|z|      [0.025      0.975]
 ------------------------------------------------------------------------------
-const          5.2482      0.739      7.097      0.000       3.799       6.698
-Pclass        -1.1255      0.188     -5.992      0.000      -1.494      -0.757
-Age           -0.0412      0.010     -4.079      0.000      -0.061      -0.021
-SibSp         -0.3044      0.126     -2.416      0.016      -0.551      -0.057
-Parch         -0.0978      0.142     -0.690      0.490      -0.375       0.180
-Fare           0.0036      0.004      1.021      0.307      -0.003       0.010
-Sex_male      -2.7491      0.239    -11.513      0.000      -3.217      -2.281
-Embarked_Q    -0.0840      0.460     -0.183      0.855      -0.986       0.818
-Embarked_S    -0.4395      0.286     -1.535      0.125      -1.001       0.122
+const          5.2911      0.704      7.519      0.000       3.912       6.670
+Pclass        -1.1450      0.176     -6.491      0.000      -1.491      -0.799
+Age           -0.0427      0.010     -4.203      0.000      -0.063      -0.023
+SibSp         -0.2564      0.129     -1.989      0.047      -0.509      -0.004
+Parch         -0.1043      0.145     -0.719      0.472      -0.389       0.180
+Fare           0.0013      0.003      0.468      0.640      -0.004       0.007
+Sex_male      -2.6232      0.235    -11.174      0.000      -3.083      -2.163
+Embarked_Q    -0.1869      0.455     -0.411      0.681      -1.078       0.705
+Embarked_S    -0.3619      0.285     -1.269      0.205      -0.921       0.197
 ==============================================================================
 
+* Pseudo R-squared: 0.3277, indicating a moderate fit of the model. 
+* Log-Likelihood: -277.56, which is useful for model comparison.
+* LLR p-value: 7.241e−54, suggesting that the model significantly predicts survival.
 
-* Pseudo R-squared: 0.3455, indicating a moderate fit of the model. 
-* Log-Likelihood: -267.81, which is useful for model comparison.
-* LLR p-value: 1.950×10−56, suggesting that the model significantly predicts survival.
-
-* **Sex_male:** -2.7491:
+* **Sex_male:** -2.6232:
 
 The strong association of being male with decreased survival odds aligns with the historical narrative that women and children were prioritized in lifeboat assignments, reinforcing gender dynamics during the disaster. 
 
-* **Age:** -0.0412: 
+* **Age:** -0.0447: 
 
 The trend showing that older passengers had lower survival odds is consistent with accounts of the disaster, where younger individuals, especially women and children, were often prioritized for lifeboat access. 
 
-* **Pclass: **-1.1255: 
+* **Pclass:**-1.1450: 
 
 Passengers in first class had significantly higher survival rates compared to those in second and third classes. This reflects socioeconomic factors that influenced access to lifeboats and safety. 
 
-* **SibSp: **-0.3044 
+* **SibSp:**-0.2564 
 
 The negative correlation with the number of siblings/spouses aboard suggests that larger family groups may have had more difficulty in the chaotic evacuation, leading to lower survival rates.
 
