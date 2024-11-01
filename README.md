@@ -317,10 +317,8 @@ Accuracy: 0.8277153558052435
 | weighted avg |      0.83 | 0.83   | 0.83     | 267     |
 
 
-
-* **"Not Survived" Metrics:** Gradient Boosting performed the best with the highest recall (0.90) and F1-score (0.87), indicating better detection of the not survived class. 
-* **"Survived" Metrics**: Gradient Boosting also has the highest precision (0.83) for the survived class In summary, there is room for improvement in the recall for the "Survived" class across all three models, particularly in the Random Forest model.
-
+**"Not Survived" Metrics:** Gradient Boosting performed the best with the highest recall (0.90) and F1-score (0.87), indicating better detection of the not survived class. 
+**"Survived" Metrics**: Gradient Boosting also has the highest precision (0.83) for the survived class In summary, there is room for improvement in the recall for the "Survived" class across all three models, particularly in the Random Forest model.
 
     # prompt: confusion matrix4
 
@@ -341,7 +339,8 @@ Accuracy: 0.8277153558052435
     plt.ylabel("True Labels")
     plt.show()
 
-![Uploading image.png…]()
+![image](https://github.com/user-attachments/assets/a9534b3b-755f-41b9-aec7-9c60e1377299)
+
 
 
     # prompt: logistic regression
@@ -369,14 +368,12 @@ Optimization terminated successfully.
          Current function value: 0.446235
          Iterations 6
 Accuracy: 0.8352059925093633
-              precision    recall  f1-score   support
-
-           0       0.83      0.92      0.87       163
-           1       0.85      0.70      0.77       104
-
-    accuracy                           0.84       267
-   macro avg       0.84      0.81      0.82       267
-weighted avg       0.84      0.84      0.83       267
+|              | precision | recall | f1-score | support |
+|:------------:|:---------:|-------:|----------|---------|
+|       0      |      0.83 | 0.92   | 0.87     | 163     |
+|       1      |      0.85 | 0.70   | 0.77     | 104     |
+|   macro avg  |      0.84 | 0.81   | 0.82     | 267     |
+| weighted avg |      0.84 | 0.84   | 0.83     | 267     |
 
                            Logit Regression Results                           
 ==============================================================================
